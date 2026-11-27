@@ -1,0 +1,60 @@
+# ==========================
+# Node.js
+# ==========================
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+
+# ==========================
+# Python
+# ==========================
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# ==========================
+# Environment variables
+# ==========================
+.env
+.env.*
+!.env.example
+
+# ==========================
+# Secrets and credentials
+# ==========================
+*.pem
+*.key
+secrets/
+credentials.json
+
+# ==========================
+# Logs and temporary files
+# ==========================
+logs/
+*.log
+tmp/
+temp/
+
+# ==========================
+# Local storage
+# ==========================
+uploads/
+postgres_data/
+
+# ==========================
+# IDE and operating system
+# ==========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
