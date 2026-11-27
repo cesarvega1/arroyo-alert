@@ -1,0 +1,60 @@
+name: ARROYO ALERT CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'fix/**'
+      - 'chore/**'
+      - 'docs/**'
+      - 'hotfix/**'
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  validate-structure:
+    name: Validate project structure
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Validate project directories
+        run: |
+          test -d frontend
+          test -d backend
+          test -d ai-service
+          test -d infrastructure
+          test -d docs
+          test -d .github/workflows
+          echo "Project directories validated successfully"
+
+      - name: Validate configuration files
+        run: |
+          test -f README.md
+          test -f .gitignore
+          test -f .editorconfig
+          echo "Configuration files validated successfully"
+
+      - name: Check tracked environment files
+        run: |
+          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '(^|/)\.env\.example$'; then
+            echo "::error::Environment file must not be tracked"
+            exit 1
+          fi
+          echo "Environment file validation passed"
+
+      - name: CI completed
+        run: echo "ARROYO ALERT CI completed successfully"
