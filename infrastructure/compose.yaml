@@ -1,0 +1,69 @@
+name: arroyo-alert
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.7
+    container_name: arroyo_alert_db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
+      POSTGRES_USER: ${DB_USER:?DB_USER is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+
+    ports:
+      - "127.0.0.1:${DB_PORT}:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    networks:
+      - arroyo_network
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  postgres-test:
+    image: postgis/postgis:16-3.7
+    container_name: arroyo_alert_db_test
+    restart: "no"
+
+    environment:
+      POSTGRES_DB: ${TEST_DB_NAME:?TEST_DB_NAME is required}
+      POSTGRES_USER: ${TEST_DB_USER:?TEST_DB_USER is required}
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:?TEST_DB_PASSWORD is required}
+
+    ports:
+      - "127.0.0.1:${TEST_DB_PORT}:5432"
+
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+
+    networks:
+      - arroyo_test_network
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  postgres_test_data:
+
+networks:
+  arroyo_network:
+    driver: bridge
+
+  arroyo_test_network:
+    driver: bridge

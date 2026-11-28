@@ -102,3 +102,28 @@ jobs:
 
       - name: Backend validation completed
         run: echo "Backend validated successfully"
+
+  validate-infrastructure:
+    name: Validate infrastructure
+    needs: validate-structure
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    defaults:
+      run:
+        working-directory: infrastructure
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Verify Docker Compose
+        run: docker compose version
+
+      - name: Validate Docker Compose configuration
+        run: docker compose --env-file .env.example config --quiet
+
+      - name: Infrastructure validation completed
+        run: echo "Infrastructure validated successfully"
