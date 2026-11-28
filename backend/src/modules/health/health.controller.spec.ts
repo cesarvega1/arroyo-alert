@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { describe, beforeEach, it, expect, vi } from 'vitest';
 import { HealthController } from './health.controller.js';
 import { HealthService } from './health.service.js';
@@ -9,16 +10,21 @@ describe('HealthController', () => {
   const mockHealthResponse = {
     status: 'ok',
     service: 'arroyo-alert-api',
-    timestamp: '2026-11-28T16:00:00.000Z',
+    timestamp: '2026-11-28T18:00:00.000Z',
     uptime: 100,
+    database: {
+      status: 'up',
+    },
   };
 
   const mockHealthService = {
-    check: vi.fn().mockReturnValue(mockHealthResponse),
+    check: vi.fn(),
   };
 
   beforeEach(async () => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+
+    mockHealthService.check.mockResolvedValue(mockHealthResponse);
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [HealthController],
@@ -37,13 +43,25 @@ describe('HealthController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('should return the health status', () => {
-    expect(controller.check()).toEqual(mockHealthResponse);
+  it('should return the health status', async () => {
+    const result = await controller.check();
+
+    expect(result).toEqual(mockHealthResponse);
   });
 
-  it('should call HealthService.check once', () => {
-    controller.check();
+  it('should call HealthService.check once', async () => {
+    await controller.check();
 
     expect(mockHealthService.check).toHaveBeenCalledTimes(1);
+  });
+
+  it('should propagate ServiceUnavailableException', async () => {
+    mockHealthService.check.mockRejectedValue(
+      new ServiceUnavailableException('Database unavailable'),
+    );
+
+    await expect(controller.check()).rejects.toThrow(
+      ServiceUnavailableException,
+    );
   });
 });

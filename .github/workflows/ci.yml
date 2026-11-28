@@ -50,7 +50,7 @@ jobs:
 
       - name: Check tracked environment files
         run: |
-          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '(^|/)\.env\.example$'; then
+          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '(^|/)\.env(\.test)?\.example$'; then
             echo "::error::Environment file must not be tracked"
             exit 1
           fi
@@ -63,11 +63,39 @@ jobs:
     name: Validate backend
     needs: validate-structure
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     defaults:
       run:
         working-directory: backend
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.7
+
+        env:
+          POSTGRES_DB: arroyo_alert_test
+          POSTGRES_USER: arroyo_test
+          POSTGRES_PASSWORD: ci_test_password
+
+        ports:
+          - 5435:5432
+
+        options: >-
+          --health-cmd="pg_isready -U arroyo_test -d arroyo_alert_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      NODE_ENV: test
+      PORT: 3001
+      API_PREFIX: api/v1
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5435
+      DB_USER: arroyo_test
+      DB_PASSWORD: ci_test_password
+      DB_NAME: arroyo_alert_test
 
     steps:
       - name: Checkout repository
@@ -78,14 +106,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: 24
+          cache: npm
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Check code formatting
+      - name: Check formatting
         run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
 
       - name: Run lint
@@ -94,14 +122,14 @@ jobs:
       - name: Run unit tests
         run: npm run test
 
-      - name: Run E2E tests
+      - name: Run database migrations
+        run: npm run migration:run:test
+
+      - name: Run end-to-end tests
         run: npm run test:e2e
 
-      - name: Build backend
+      - name: Build application
         run: npm run build
-
-      - name: Backend validation completed
-        run: echo "Backend validated successfully"
 
   validate-infrastructure:
     name: Validate infrastructure
