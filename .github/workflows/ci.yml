@@ -56,5 +56,49 @@ jobs:
           fi
           echo "Environment file validation passed"
 
-      - name: CI completed
-        run: echo "ARROYO ALERT CI completed successfully"
+      - name: Structure validation completed
+        run: echo "Project structure validated successfully"
+
+  validate-backend:
+    name: Validate backend
+    needs: validate-structure
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check code formatting
+        run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
+
+      - name: Run lint
+        run: npm run lint -- --deny-warnings
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Build backend
+        run: npm run build
+
+      - name: Backend validation completed
+        run: echo "Backend validated successfully"
