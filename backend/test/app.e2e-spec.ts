@@ -1,62 +1,105 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import type { Server } from 'node:http';
+import type { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
 import request from 'supertest';
-import type { Server } from 'node:http';
+
 import { AppModule } from '../src/app.module.js';
 import { setupApp } from '../src/config/configuration/setup-app.js';
 
-describe('ARROYO ALERT API (e2e)', () => {
+describe('App (e2e)', () => {
   let app: INestApplication<Server>;
+  let dataSource: DataSource;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    const moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
 
     setupApp(app);
+
     await app.init();
+
+    dataSource = app.get(DataSource);
+
+    const rows: { database: string; username: string }[] =
+      await dataSource.query(
+        'SELECT current_database() AS database, current_user AS username',
+      );
+
+    if (
+      process.env.NODE_ENV !== 'test' ||
+      rows[0]?.database !== 'arroyo_alert_test' ||
+      rows[0]?.username !== 'arroyo_test'
+    ) {
+      await app.close();
+
+      throw new Error('Unsafe testing database connection');
+    }
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app && dataSource?.isInitialized) {
+      await app.close();
+    }
   });
 
-  describe('API Information', () => {
-    it('GET /api/v1 should return API information', async () => {
-      await request(app.getHttpServer()).get('/api/v1').expect(200).expect({
-        name: 'ARROYO ALERT API',
-        version: '1.0.0',
-        status: 'running',
-        description: 'Citizen reporting and flood monitoring platform',
-      });
-    });
-  });
-
-  describe('Health Check', () => {
-    it('GET /api/v1/health should return 200', async () => {
-      await request(app.getHttpServer()).get('/api/v1/health').expect(200);
-    });
-
-    it('should return the correct health response', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/health')
-        .expect(200);
-
-      expect(response.body).toEqual({
-        status: 'ok',
-        service: 'arroyo-alert-api',
-        timestamp: expect.any(String),
-        uptime: expect.any(Number),
-      });
+  it('GET /api/v1 should return API information', async () => {
+    await request(app.getHttpServer()).get('/api/v1').expect(200).expect({
+      name: 'ARROYO ALERT API',
+      version: '1.0.0',
+      status: 'running',
+      description: 'Citizen reporting and flood monitoring platform',
     });
   });
 
-  describe('Error Handling', () => {
-    it('should return 404 for a nonexistent route', async () => {
-      await request(app.getHttpServer()).get('/api/v1/nonexistent').expect(404);
+  it('GET /api/v1/health should return HTTP 200', async () => {
+    await request(app.getHttpServer()).get('/api/v1/health').expect(200);
+  });
+
+  it('GET /api/v1/health should return health information', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/health')
+      .expect(200);
+
+    expect(response.body).toEqual({
+      status: 'ok',
+      service: 'arroyo-alert-api',
+      timestamp: expect.any(String),
+      uptime: expect.any(Number),
+      database: {
+        status: 'up',
+      },
     });
+  });
+
+  it('should connect to the testing database', () => {
+    expect(dataSource.isInitialized).toBe(true);
+    expect(dataSource.options.database).toBe('arroyo_alert_test');
+  });
+
+  it('should have PostGIS enabled', async () => {
+    const rows: { enabled: boolean }[] = await dataSource.query(
+      "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis') AS enabled",
+    );
+
+    expect(rows[0]?.enabled).toBe(true);
+  });
+
+  it('should have the PostGIS migration registered', async () => {
+    const rows: { name: string }[] = await dataSource.query(
+      'SELECT name FROM typeorm_migrations',
+    );
+
+    expect(rows).toContainEqual({
+      name: 'EnablePostGIS1795890080624',
+    });
+  });
+
+  it('GET /api/v1/unknown should return HTTP 404', async () => {
+    await request(app.getHttpServer()).get('/api/v1/unknown').expect(404);
   });
 });
