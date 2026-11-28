@@ -1,19 +1,23 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
 import { Logger } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
+import { AppModule } from './app.module.js';
+import appConfig from './config/configuration/app.config.js';
+import { setupApp } from './config/configuration/setup-app.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
   const logger = new Logger('Bootstrap');
 
-  app.setGlobalPrefix('api/v1');
+  const config = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
 
-  const port = 3000;
+  setupApp(app);
 
-  await app.listen(port);
+  await app.listen(config.port);
 
-  logger.log(`ARROYO ALERT API is running on port ${port}`);
-  logger.log(`API URL: http://localhost:${port}/api/v1`);
+  logger.log(`Environment: ${config.environment}`);
+  logger.log(`ARROYO ALERT API is running on port ${config.port}`);
+  logger.log(`API URL: http://localhost:${config.port}/${config.apiPrefix}`);
 }
-await bootstrap();
+
+void bootstrap();

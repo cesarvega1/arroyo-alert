@@ -4,6 +4,7 @@ import { describe, beforeAll, afterAll, it, expect } from 'vitest';
 import request from 'supertest';
 import type { Server } from 'node:http';
 import { AppModule } from '../src/app.module.js';
+import { setupApp } from '../src/config/configuration/setup-app.js';
 
 describe('ARROYO ALERT API (e2e)', () => {
   let app: INestApplication<Server>;
@@ -15,8 +16,7 @@ describe('ARROYO ALERT API (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
 
-    app.setGlobalPrefix('api/v1');
-
+    setupApp(app);
     await app.init();
   });
 
